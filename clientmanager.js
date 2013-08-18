@@ -7,6 +7,8 @@ var ClientManager = function(pin_to_client) {
     self.on("bindPin", function(connection, data) {
         console.log("pin bound");
         self.pin_to_client[data.pin] = connection;
+
+        connection.sendEvent("pinBound", { pin: data.pin });
     });
 }
 
