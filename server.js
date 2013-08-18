@@ -10,13 +10,13 @@ var server = http.createServer(function(request, response) {
 	response.end();
 });
 
-var pin_to_client = {};
-
-var phone_manager = new PhoneManager(pin_to_client);
-var client_manager = new ClientManager(pin_to_client);
+var phone_manager = new PhoneManager();
+var client_manager = new ClientManager();
+phone_manager.client_manager = client_manager;
+client_manager.phone_manager = phone_manager;
 
 server.listen(8080, function() {
-	console.log((new Date()) + " server is listening on port 8080");
+	console.log("[http] Server is listening on port 8080");
 });
 
 wsServer = new WebSocketServer({
@@ -34,9 +34,13 @@ function handleRequest(protocol, manager) {
         } catch(e) {
             return;
         }
-        console.log((new Date()) + 'Connection accepted.');
+        console.log("[ws] Connection accepted.");
 
         conn.sendEvent = function(event, data) {
+            if(!data) {
+                data = {};
+            }
+
             data['e'] = event;
             conn.send(JSON.stringify(data));
         }
@@ -48,11 +52,12 @@ function handleRequest(protocol, manager) {
                 console.log("Invalid JSON from client");
                 return;
             }
+            console.log("msg:" + msg.e);
             manager.emit(msg.e, conn, msg);
         });
 
         conn.on('close', function(reasonCode, description) {
-            console.log((new Date()) + ' Peer ' + conn.remoteAddress + ' disconnected');
+            manager.emit("close", conn);
         });
     };
 }

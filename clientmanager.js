@@ -1,14 +1,38 @@
 var EventEmitter = require("events").EventEmitter;
 
-var ClientManager = function(pin_to_client) {
+var ClientManager = function() {
     var self = this;
-    self.pin_to_client = pin_to_client;
+
+    self.passPhoneEvent = function(name, connection) {
+        return function(e) {
+            connection.sendEvent(name, { v: e.v });
+        }
+    }
 
     self.on("bindPin", function(connection, data) {
-        console.log("pin bound");
-        self.pin_to_client[data.pin] = connection;
+        data.pin = parseInt(data.pin);
+        console.log("[" + data.pin + "] Bound by client");
+
+        // Listen for the phone doing things
+        self.phone_manager.on(data.pin + ":keyUp", self.passPhoneEvent("keyUp", connection));
+        self.phone_manager.on(data.pin + ":keyDown", self.passPhoneEvent("keyDown", connection));
+        self.phone_manager.on(data.pin + ":tilt", self.passPhoneEvent("tilt", connection));
+
+        self.phone_manager.on(data.pin + ":phoneReady", function() {
+            connection.sendEvent("phoneReady");
+        });
+
+        self.phone_manager.on(data.pin + ":phoneClose", function() {
+            connection.sendEvent("phoneClose");
+        });
 
         connection.sendEvent("pinBound", { pin: data.pin });
+
+        console.log(self.phone_manager.bound_pins);
+        if(self.phone_manager.bound_pins.indexOf(data.pin) != -1) {
+            console.log("Phone connected");
+            connection.sendEvent("phoneReady");
+        }
     });
 }
 
